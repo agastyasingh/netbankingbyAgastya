@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,7 +28,6 @@ import com.main.netbankingapp.service.AccountService;
 
 @RestController
 @RequestMapping("/api/accounts")
-//@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 @CrossOrigin(origins = "https://lightyellow-jaguar-749540.hostingersite.com", allowCredentials = "true")
 public class AccountController {
 
@@ -41,27 +41,33 @@ public class AccountController {
 		this.accountService = accountService;
 	}
 	
+	
 	@GetMapping("/my-accounts")
-	public ResponseEntity<List<AccountDTO>> getMyAccounts(@AuthenticationPrincipal OidcUser oidcUser) {
-	    User user = userRepository.findByEmail(oidcUser.getEmail())
-	        .orElseThrow(() -> new RuntimeException("User not found"));
-	    
-	    List<AccountDTO> accounts = accountService.getAccountsByUser(user)
-	        .stream()
-	        .map(acc -> new AccountDTO(
-	            acc.getId(),
-	            acc.getAccountHolderName(),
-	            acc.getAccountNumber(),
-	            acc.getAccountBalance()
-	        ))
-	        .toList();
-	    
-	    return ResponseEntity.ok(accounts);
-	}
+    public ResponseEntity<List<AccountDTO>> getMyAccounts(@AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null) {
+            return ResponseEntity.status(401).build();
+        }
+        
+        String email = jwt.getClaim("email");
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found: " + email));
+        
+        List<AccountDTO> accounts = accountService.getAccountsByUser(user)
+            .stream()
+            .map(acc -> new AccountDTO(
+                acc.getId(),
+                acc.getAccountHolderName(),
+                acc.getAccountNumber(),
+                acc.getAccountBalance()
+            ))
+            .toList();
+        
+        return ResponseEntity.ok(accounts);
+    }
 	
 	@GetMapping("/live-exchange-rates")
-	public ResponseEntity<Map<String, Double>> getExchangeRates(@AuthenticationPrincipal OidcUser oidcUser) throws IOException, InterruptedException{
-		User user = userRepository.findByEmail(oidcUser.getEmail())
+	public ResponseEntity<Map<String, Double>> getExchangeRates(@AuthenticationPrincipal Jwt jwt) throws IOException, InterruptedException{
+		User user = userRepository.findByEmail(jwt.getClaim("email"))
 		        .orElseThrow(() -> new RuntimeException("User not found"));
 		
 		List<Account> accounts = accountService.getAccountsByUser(user);
@@ -82,9 +88,32 @@ public class AccountController {
 	}
 
     
-    @GetMapping("/summary")
-    public ResponseEntity<Map<String, Object>> getDashboardSummary(@AuthenticationPrincipal OidcUser oidcUser) {
-        User user = userRepository.findByEmail(oidcUser.getEmail())
+//    @GetMapping("/summary")
+//    public ResponseEntity<Map<String, Object>> getDashboardSummary(@AuthenticationPrincipal Jwt jwt) {
+//        User user = userRepository.findByEmail(jwt.getClaim("email"))
+//            .orElseThrow(() -> new RuntimeException("User not found"));
+//        
+//        List<Account> accounts = accountService.getAccountsByUser(user);
+//        double totalBalance = accounts.stream()
+//            .mapToDouble(Account::getAccountBalance)
+//            .sum();
+//        
+//        Map<String, Object> summary = new HashMap<>();
+//        summary.put("totalBalance", totalBalance);
+//        summary.put("accountCount", accounts.size());
+//        summary.put("recentTransactions", 0); // TODO: implement transactions
+//        
+//        return ResponseEntity.ok(summary);
+//    }
+	
+	@GetMapping("/summary")
+    public ResponseEntity<Map<String, Object>> getDashboardSummary(@AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null) {
+            return ResponseEntity.status(401).build();
+        }
+        
+        String email = jwt.getClaim("email");
+        User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new RuntimeException("User not found"));
         
         List<Account> accounts = accountService.getAccountsByUser(user);
@@ -95,7 +124,7 @@ public class AccountController {
         Map<String, Object> summary = new HashMap<>();
         summary.put("totalBalance", totalBalance);
         summary.put("accountCount", accounts.size());
-        summary.put("recentTransactions", 0); // TODO: implement transactions
+        summary.put("recentTransactions", 0);
         
         return ResponseEntity.ok(summary);
     }
@@ -104,9 +133,9 @@ public class AccountController {
     public ResponseEntity<String> createAccount(
         @RequestParam String name, 
         @RequestParam String phoneNo,
-        @AuthenticationPrincipal OidcUser oidcUser 
+        @AuthenticationPrincipal Jwt jwt 
     ) {
-        String message = accountService.createAccount(oidcUser.getEmail(), name, phoneNo);
+        String message = accountService.createAccount(jwt.getClaim("email"), name, phoneNo);
         return ResponseEntity.ok(message);
     }
     
@@ -137,6 +166,7 @@ public class AccountController {
 		return ResponseEntity.ok("Transaction Successful");
 	}
 	
-//	@PostMapping("/deleteAccount")
-//	public ResponseEntity<String> deleteAccount(@RequestBody )
 }
+
+//@PostMapping("/deleteAccount")
+//public ResponseEntity<String> deleteAccount(@RequestBody )
