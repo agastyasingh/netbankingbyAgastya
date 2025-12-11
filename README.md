@@ -27,6 +27,8 @@ A production-ready, secure banking application built with **Spring Boot 3.x** fe
 
 This is a comprehensive **Net Banking Backend Application** designed by me for replicating modern fintech requirements. The system provides secure account management, real-time currency conversion, and seamless fund transfers with enterprise-grade security implementations.
 
+<img width="943" height="458" alt="image" src="https://github.com/user-attachments/assets/0c52b0b5-eec3-486d-a848-de905e5ea10d" />
+
 <img width="842" height="445" alt="image" src="https://github.com/user-attachments/assets/08dfd636-1528-4bf7-88cb-c0feb15864e7" />
 
 ### Why This Project?
